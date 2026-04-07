@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Registro de Escaneo</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+  .contenedor {
+    background: white;
+    padding: 20px 25px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 360px;
+    box-sizing: border-box;
+    text-align: center;
+  }
+  .titulo {
+    font-size: 22px;
+    margin-bottom: 15px;
+    user-select: none;
+  }
+  label {
+    display: block;
+    margin: 10px 0 5px;
+    font-weight: 600;
+  }
+  input[type="text"],
+  button {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  input[type="text"] {
+    padding: 8px 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+  }
+  button {
+    margin-top: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+  }
+  button.guardar {
+    background-color: #007bff;
+    color: white;
+  }
+  button.guardar:hover {
+    background-color: #0056b3;
+  }
+  button.exportar {
+    background-color: #28a745;
+    color: white;
+    margin-top: 10px;
+  }
+  button.exportar:hover {
+    background-color: #1e7e34;
+  }
+  table {
+    margin-top: 20px;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    word-break: break-word;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px 6px;
+    text-align: center;
+  }
+  th {
+    background-color: #e9ecef;
+  }
+</style>
+</head>
+<body>
+
+<div class="contenedor">
+  <div class="titulo">📦 Registro de Escaneo</div>
+
+  <label for="dni">DNI:</label>
+  <input type="text" id="dni" placeholder="Ingrese o escanee DNI" autofocus />
+
+  <label for="scanner">TLPN:</label>
+  <input type="text" id="scanner" placeholder="Escanee TLPN" />
+
+  <div>
+    <button class="guardar" onclick="guardar()">Guardar</button>
+    <button class="exportar" onclick="exportarExcel()">Exportar Excel</button>
+  </div>
+
+  <table id="tabla" aria-label="Tabla de registros">
+    <thead>
+      <tr>
+        <th>DNI</th>
+        <th>TLPN</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+    <!-- Filas se agregan aquí -->
+    </tbody>
+  </table>
+</div>
+
+<script>
+  function beep() {
+    let audio = new Audio("https://www.soundjay.com/buttons/sounds/beep-01a.mp3");
+    audio.play();
+  }
+
+  document.getElementById("dni").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      document.getElementById("scanner").focus();
+    }
+  });
+
+  document.getElementById("scanner").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      guardar();
+    }
+  });
+
+  window.onload = function() {
+    let datos = JSON.parse(localStorage.getItem("registros")) || [];
+    let tbody = document.querySelector("#tabla tbody");
+
+    datos.forEach(d => {
+      let fila = tbody.insertRow();
+      fila.insertCell(0).innerText = d.dni;
+      fila.insertCell(1).innerText = d.tlpn;
+      fila.insertCell(2).innerText = d.fecha;
+    });
+  };
+
+  function guardar() {
+    let dniInput = document.getElementById("dni");
+    let tlpnInput = document.getElementById("scanner");
+    let dni = dniInput.value.trim();
+    let tlpn = tlpnInput.value.trim();
+
+    if (dni === "" || tlpn === "") {
+      alert("Falta DNI o TLPN");
+      return;
+    }
+
+    if (dni.length < 6) {
+      alert("DNI inválido");
+      return;
+    }
+    if (tlpn.length < 5) {
+      alert("TLPN inválido");
+      return;
+    }
+
+    let filas = document.querySelectorAll("#tabla tbody tr");
+    for (let i = 0; i < filas.length; i++) {
+      if (filas[i].cells[1].innerText === tlpn) {
+        alert("⚠️ TLPN ya registrado");
+        beep();
+        return;
+      }
+    }
+
+    let tbody = document.querySelector("#tabla tbody");
+    let fila = tbody.insertRow();
+    fila.insertCell(0).innerText = dni;
+    fila.insertCell(1).innerText = tlpn;
+    let fechaStr = new Date().toLocaleString();
+    fila.insertCell(2).innerText = fechaStr;
+
+    fila.style.backgroundColor = "#d4edda";
+    setTimeout(() => fila.style.backgroundColor = "", 1200);
+
+    beep();
+
+    dniInput.value = "";
+    tlpnInput.value = "";
+    dniInput.focus();
+
+    let datos = JSON.parse(localStorage.getItem("registros")) || [];
+    datos.push({ dni, tlpn, fecha: fechaStr });
+    localStorage.setItem("registros", JSON.stringify(datos));
+  }
+
+  function exportarExcel() {
+    let tbody = document.querySelector("#tabla tbody");
+    let filas = tbody.rows;
+    let csv = [];
+
+    function formatearCelda(texto) {
+      if (texto == null) return '""';
+      let textoEscapado = texto.replace(/"/g, '""');
+      return `"${textoEscapado}"`;
+    }
+
+    // Usamos punto y coma como separador
+    csv.push([
+      formatearCelda("DNI"),
+      formatearCelda("TLPN"),
+      formatearCelda("Fecha")
+    ].join(";"));
+
+    for (let i = 0; i < filas.length; i++) {
+      let fila = filas[i];
+      let cols = [];
+      cols.push(formatearCelda(fila.cells[0].innerText));
+      cols.push(formatearCelda(fila.cells[1].innerText));
+      cols.push(formatearCelda(fila.cells[2].innerText));
+      csv.push(cols.join(";"));
+    }
+
+    let csvFile = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+    let link = document.createElement("a");
+    let fecha = new Date().toISOString().slice(0, 10);
+    link.download = `registro_${fecha}.csv`;
+    link.href = window.URL.createObjectURL(csvFile);
+    link.click();
+  }
+</script>
+
+</body>
+</html>
